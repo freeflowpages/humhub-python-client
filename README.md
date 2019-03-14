@@ -11,12 +11,17 @@ users = client.users
 posts = client.posts
 likes = client.likes
 wikis = client.wikis
+comments = client.comments
+spaces = client.spaces
+
 ```
 
 ### User manipulation
 
 ```python
-users.list()
+
+users.list() # List all users
+users.list(query='username-email-or-tag') # search users by username, email or tag
 users.get(user_id=1)
 users.delete(user_id=1)
 users.create(username='Required-field', email='Required-field', firstname='Required-field', lastname='Required-field', title=None, ..)
@@ -69,4 +74,30 @@ wiki.update(wiki_page_id='Required-wiki-page-id-integer', title='Required-field'
 wikis.move_to_space(space_id=1, wiki_page_id=1)
 # Move certain wiki page into personal wiki for user
 wikis.move_to_user_space(user_id=1)
+```
+
+### Comments
+```python
+comments.get(id=1) # Get comment by ID
+```
+
+### Spaces
+```python
+
+spaces.list() # all spaces
+spaces.list(query='text') # all spaces with name, description or tags mathcing query
+spaces.delete(space_id=1) # delete certain space
+spaces.enable(space_id=1) # enable certain space
+spaces.disable(space_id=1) # disable certain space
+spaces.archive(space_id=1) # archive certain space
+spaces.unarchive(space_id=1) # unarchive certain space
+
+# if private -> means visible to users or not
+# join_policy_invites_only -> True :: Members can access space only by invites
+#                          -> False ::  Members can access space by invites and by requests (assuming space is visible)
+# if private is True, then join_policy_invites_only value will be ignored and will always be True
+spaces.create(name='Required-field', description=None, private=False, tags=[], join_policy_invites_only=False)
+
+# Update space
+spaces.update(self, space_id, name=None, description=None, tags=None, private=None, join_policy_invites_only=None)
 ```

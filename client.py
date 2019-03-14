@@ -65,7 +65,6 @@ class Request(object):
         return path
 
     def get(self, path, formatter=None, **kwargs):
-
         url = '{0}{1}'.format(self.base_url, self.ensure_path(path))
 
         if kwargs:
@@ -98,11 +97,12 @@ class Api(object):
 
 
 class UserAPI(Api):
-    def list(self):
-        return self.request.get('/user')
+    def list(self, query=None):
+        if not query:
+            return self.request.get('/user')
+        return self.request.get('/user', q=query)
 
-    def create(self, username, email, password, firstname, lastname, title=None, gender=None, street=None, city=None,
-               country=None, zip=None):
+    def create(self, username, email, password, firstname, lastname, title=None, gender=None, street=None, city=None, country=None, zip=None):
 
         data = {
             "account": {
@@ -117,7 +117,7 @@ class UserAPI(Api):
                 "street": street,
                 "city": city,
                 "zip": zip,
-                "country": country
+                "country": Country.get_code(country)
             },
             "password": {
                 "newPassword": password
@@ -129,8 +129,7 @@ class UserAPI(Api):
     def get(self, user_id):
         return self.request.get('/user/{}'.format(user_id))
 
-    def update(self, user_id, username=None, email=None, password=None, firstname=None, lastname=None, title=None,
-               gender=None, street=None, city=None, country=None, zip=None):
+    def update(self, user_id, username=None, email=None, password=None, firstname=None, lastname=None, title=None, gender=None, street=None, city=None, country=None, zip=None, enabled=None):
         """
         IMPORTANT: Set Parameter value to '' if you want to remove it, otherwise it will be ignored
         """
@@ -163,7 +162,13 @@ class UserAPI(Api):
             if zip is not None:
                 data['profile']['zip'] = zip
             if country is not None:
-                data['profile']['country'] = country
+                data['profile']['country'] = Country.get_code(country)
+
+            if enabled is not None:
+                if enabled:
+                    data['account']['enabled'] = 1
+                else:
+                    data['account']['enabled'] = 0
 
         return self.request.put('/user/{}'.format(user_id), data)
 
@@ -172,6 +177,19 @@ class UserAPI(Api):
 
     def log_out(self, user_id):
         return self.request.delete('/user/session/all/{}'.format(user_id))
+
+    def enable(self, user_id):
+        data = {'account': {'status': 1}}
+        return self.request.put('/user/{}'.format(user_id), data)
+
+    def disable(self, user_id):
+        data = {'account': {'status': 0}}
+        return self.request.put('/user/{}'.format(user_id), data)
+
+
+class CommentApi(Api):
+    def get(self, comment_id):
+        return self.request.get('/comment/{}'.format(comment_id))
 
 
 class PostAPI(Api):
@@ -212,8 +230,10 @@ class SpaceAPI(Api):
     def get(self, space_id):
         return self.request.get('/space/{}'.format(space_id))
 
-    def list(self):
-        return self.request.get('/space')
+    def list(self, query=None):
+        if not query:
+            return self.request.get('/space')
+        return self.request.get('/space', q=query)
 
     def delete(self, space_id):
         return self.request.delete('/space/{}'.format(space_id))
@@ -390,20 +410,22 @@ class WikiAPI(Api):
         return self.request.put('/wiki/{}'.format(wiki_page_id), data,
                                 formatter=Formatter.replace_contentcontainer_with_space)
 
-    def move_to_space(self, space_id, wiki_page_id):
+    def move_to_space(self, wiki_page_id, space_id):
         data = {
             "wikipage": {'space_id': space_id}
         }
         return self.request.put('/wiki/{}'.format(wiki_page_id), data,
                                 formatter=Formatter.replace_contentcontainer_with_space)
 
-    def move_to_user_space(self, user_id, wiki_page_id):
+    def move_to_user_space(self, wiki_page_id, user_id):
         data = {
             "wikipage": {'user_id': user_id}
         }
         return self.request.put('/wiki/{}'.format(wiki_page_id), data,
                                 formatter=Formatter.replace_contentcontainer_with_space)
 
+    def migrate(self):
+        pass
 
 class HumhubClient(object):
     def __init__(self, base_url, api_key):
@@ -422,7 +444,7 @@ class HumhubClient(object):
 
     @property
     def comments(self):
-        return CommentAPI(self.request)
+        return CommentApi(self.request)
 
     @property
     def users(self):
