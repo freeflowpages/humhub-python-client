@@ -333,99 +333,95 @@ class WikiAPI(Api):
     def list(self, space_id=None):
         if not space_id:
             return self.request.get('/wiki')
-        return self.request.get('/wiki/container/{}'.format(space_id),
-                                formatter=Formatter.replace_contentcontainer_with_space)
+        return self.request.get('/wiki/container/{}'.format(space_id))
 
     def delete(self, wiki_page_id):
         return self.request.delete('/wiki/{}'.format(wiki_page_id))
 
-    def create(self, space_id, title, content=None, is_category=False, parent_category_page_id=None, is_home=False,
-               only_admin_can_edit=False, is_public=False):
+    def create(self, title, space_id=None, user_id=None, content=None, is_category=False, parent_category_page_id=None, is_home=False, only_admin_can_edit=False, is_public=False):
+        if space_id:
+            res = self.request.get('/space/{}'.format(space_id))
+            if 'code' in res and res['code'] != 200:
+                return res
+
+            container_id = res['contentcontainer_id']
+        elif user_id:
+            res = self.request.get('/user/{}'.format(user_id))
+            if 'code' in res and res['code'] != 200:
+                return res
+
+            container_id = res['account']['contentcontainer_id']
+
         data = {
-            "wikipage": {
                 "title": title,
-                "is_home": is_home,
-                "is_category": is_category,
-                "protected": only_admin_can_edit,
+                "is_home": 1 if is_home else 0,
+                "is_category": 1 if is_category else 0,
+                "protected": 1 if only_admin_can_edit else 0,
                 "parent_page_id": parent_category_page_id,
-                "is_public": is_public
-            },
-            "revision": {
+                "is_public": 1 if is_public else 0,
                 "content": content
-            }
         }
 
         if is_category:
             data['wikipage'].pop('parent_category_page_id')
 
-        return self.request.post('/wiki/container/{}'.format(space_id), data,
-                                 formatter=Formatter.replace_contentcontainer_with_space)
+        return self.request.post('/wiki/container/{}'.format(container_id), data)
 
-    def create_personal(self, user_id, title, content=None, is_category=False, parent_category_page_id=None,
-                        is_home=False, only_admin_can_edit=False, is_public=False):
+    def update(self, wiki_page_id, title, content=None, is_category=None, parent_category_page_id=None, is_home=None, only_admin_can_edit=None, is_public=None):
         data = {
-            "wikipage": {
                 "title": title,
-                "is_home": is_home or None,
-                "is_category": is_category or None,
-                "protected": only_admin_can_edit or None,
-                "parent_page_id": parent_category_page_id,
-                "is_public": is_public or None
-            },
-            "revision": {
                 "content": content
-            }
         }
 
-        if is_category:
-            data['wikipage'].pop('parent_category_page_id')
+        if is_category is not None:
+            data['is_category'] = 1 if is_category else 0
 
-        return self.request.post('/wiki/user/{}'.format(user_id), data,
-                                 formatter=Formatter.replace_contentcontainer_with_space)
+        if parent_category_page_id is not None:
+            data['parent_category_page_id'] = parent_category_page_id
 
-    def update(self, wiki_page_id, title, content=None, is_category=False, parent_category_page_id=None, is_home=False,
-               only_admin_can_edit=False, is_public=False):
-        data = {
-            "wikipage": {
-                "title": title,
-            },
-            "revision": {
-                "content": content
-            }
-        }
+        if is_category is not None:
+            data['is_category'] = 1 if is_category else 0
 
-        if is_category:
-            data['wikipage']['is_category'] = is_category
-        if parent_category_page_id:
-            data['wikipage']['parent_category_page_id'] = parent_category_page_id
-        if is_category:
-            data['wikipage']['is_category'] = True
-        if is_home:
-            data['wikipage']['is_home'] = is_home
-        if only_admin_can_edit:
-            data['wikipage']['only_admin_can_edit'] = only_admin_can_edit
-        if is_public:
-            data['wikipage']['is_public'] = is_public
+        if is_home is not None:
+            data['is_home'] = 1 if is_home else 0
 
-        return self.request.put('/wiki/{}'.format(wiki_page_id), data,
-                                formatter=Formatter.replace_contentcontainer_with_space)
+        if only_admin_can_edit is not None:
+            data['only_admin_can_edit'] = 1 if only_admin_can_edit else 0
 
-    def move_to_space(self, wiki_page_id, space_id):
-        data = {
-            "wikipage": {'space_id': space_id}
-        }
-        return self.request.put('/wiki/{}'.format(wiki_page_id), data,
-                                formatter=Formatter.replace_contentcontainer_with_space)
+        if is_public is not None:
+            data['is_public'] = 1 if is_public else 0
 
-    def move_to_user_space(self, wiki_page_id, user_id):
-        data = {
-            "wikipage": {'user_id': user_id}
-        }
-        return self.request.put('/wiki/{}'.format(wiki_page_id), data,
-                                formatter=Formatter.replace_contentcontainer_with_space)
+        return self.request.put('/wiki/{}'.format(wiki_page_id), data)
 
-    def migrate(self):
-        pass
+
+    def migrate(self, from_use_id=None, from_space_id=None, to_user_id=None, to_space_id=None):
+        from_container = None
+        to_container = None
+
+        if from_use_id:
+            res = self.request.get('/user/{}'.format(from_use_id))
+            if 'code' in res and res['code'] != 200:
+                return res
+            from_container = res['account']['contentcontainer_id']
+        if to_user_id:
+            res = self.request.get('/user/{}'.format(to_user_id))
+            if 'code' in res and res['code'] != 200:
+                return res
+            to_container = res['account']['contentcontainer_id']
+
+        if from_space_id:
+            res = self.request.get('/space/{}'.format(from_space_id))
+            if 'code' in res and res['code'] != 200:
+                return res
+            from_container = res['contentcontainer_id']
+
+        if to_space_id:
+            res = self.request.get('/space/{}'.format(to_space_id))
+            if 'code' in res and res['code'] != 200:
+                return res
+            to_container = res['contentcontainer_id']
+        return self.request.post('/wiki/migrate/{0}/{1}'.format(from_container, to_container))
+
 
 class HumhubClient(object):
     def __init__(self, base_url, api_key):
