@@ -6,24 +6,6 @@ API_KEY = 'Riv5bNRAMEGJ4TR3s0GutEj7s'
 BASE_URL = 'http://172.17.0.2'
 
 
-class Formatter(object):
-    @staticmethod
-    def replace_contentcontainer_with_space(result):
-        """
-        Replaces contentcontainer_id with space_id to allow more usability from users
-        """
-        if 'results' in result:
-            data = result['results']
-        else:
-            data = [result]
-
-        for item in data:
-            if 'content' in item and 'metadata' in item['content'] and 'contentcontainer_id' in item['content'][
-                'metadata']:
-                item['content']['metadata']['space_id'] = item['content']['metadata'].pop('contentcontainer_id')
-        return result
-
-
 class Request(object):
     def __init__(self, base_url, api_key):
         self.base_url = base_url
@@ -175,8 +157,6 @@ class UserAPI(Api):
     def delete(self, user_id):
         return self.request.delete('/user/full/{}'.format(user_id))
 
-    def log_out(self, user_id):
-        return self.request.delete('/user/session/all/{}'.format(user_id))
 
     def enable(self, user_id):
         data = {'account': {'status': 1}}
@@ -195,34 +175,35 @@ class CommentApi(Api):
 class PostAPI(Api):
     def list(self, space_id=None):
         if space_id:
-            return self.request.get('/post/container/{}'.format(space_id),
-                                    formatter=Formatter.replace_contentcontainer_with_space)
-        return self.request.get('/post', formatter=Formatter.replace_contentcontainer_with_space)
+            res = self.request.get('/space/{}'.format(space_id))
+            if 'code' in res and res['code'] != 200:
+                return res
+            return self.request.get('/post/container/{}'.format(res['contentcontainer_id']))
+        return self.request.get('/post')
 
     def get(self, post_id):
-        return self.request.get('/post/{}'.format(post_id), formatter=Formatter.replace_contentcontainer_with_space)
+        return self.request.get('/post/{}'.format(post_id))
 
     def delete(self, post_id):
         return self.request.delete('/post/{}'.format(post_id))
 
     def update(self, post_id, message):
         data = {
-            "post": {
-                "message": message
-            }
+
+            "message": message
         }
 
-        return self.request.put('/post/{}'.format(post_id), data,
-                                formatter=Formatter.replace_contentcontainer_with_space)
+        return self.request.put('/post/{}'.format(post_id), data)
 
     def create(self, space_id, message):
+        res = self.request.get('/space/{}'.format(space_id))
+        if 'code' in res and res['code'] != 200:
+            return res
+
         data = {
-            "post": {
                 "message": message
-            }
         }
-        return self.request.post('/post/container/{}'.format(space_id), data,
-                                 formatter=Formatter.replace_contentcontainer_with_space)
+        return self.request.post('/post/container/{}'.format(res['contentcontainer_id']), data)
 
 
 class SpaceAPI(Api):
@@ -308,32 +289,40 @@ class LikeAPI(Api):
 
     def list(self, post_id=None, comment_id=None, wiki_page_id=None):
         if post_id:
-            return self.request.get('/like/type/post/{}'.format(post_id))
-        if comment_id:
-            return self.request.get('/like/type/comment/{}'.format(comment_id))
-        if wiki_page_id:
-            return self.request.get('/like/type/wikipage/{}'.format(wiki_page_id))
-        return self.request.get('/like')
+            params = {'model':'post', 'pk':post_id}
+        elif comment_id:
+            params = {'model':'comment', 'pk':comment_id}
+        elif wiki_page_id:
+            params = {'model':'wikipage', 'pk':wiki_page_id}
+        else:
+            params = {}
+        return self.request.get('/like', **params)
 
     def like(self, post_id=None, comment_id=None, wiki_page_id=None, ):
         if post_id:
-            return self.request.put('/like/type/post/{}'.format(post_id), {})
+            return self.request.put('/like/post/{}'.format(post_id), {})
         if comment_id:
-            return self.request.put('/like/type/comment/{}'.format(comment_id), {})
+            return self.request.put('/like/comment/{}'.format(comment_id), {})
         if wiki_page_id:
-            return self.request.put('/like/type/wikipage/{}'.format(wiki_page_id), {})
+            return self.request.put('/like/wikipage/{}'.format(wiki_page_id), {})
         return {'code': 404, 'message': 'Select post or comment or wiki page to like', 'name': 'Not Found'}
 
 
 class WikiAPI(Api):
     def get(self, wiki_page_id):
-        return self.request.get('/wiki/{}'.format(wiki_page_id),
-                                formatter=Formatter.replace_contentcontainer_with_space)
+        return self.request.get('/wiki/{}'.format(wiki_page_id))
 
     def list(self, space_id=None):
         if not space_id:
             return self.request.get('/wiki')
-        return self.request.get('/wiki/container/{}'.format(space_id))
+
+        res = self.request.get('/space/{}'.format(space_id))
+        if 'code' in res and res['code'] != 200:
+            return res
+
+        container_id = res['contentcontainer_id']
+
+        return self.request.get('/wiki/container/{}'.format(container_id))
 
     def delete(self, wiki_page_id):
         return self.request.delete('/wiki/{}'.format(wiki_page_id))
@@ -425,7 +414,7 @@ class WikiAPI(Api):
 
 class HumhubClient(object):
     def __init__(self, base_url, api_key):
-        self.base_url = '{}/humhub/api/v1'.format(base_url)
+        self.base_url = '{}/api/v1'.format(base_url)
         self.api_key = api_key
 
     @property
@@ -449,14 +438,6 @@ class HumhubClient(object):
     @property
     def spaces(self):
         return SpaceAPI(self.request)
-
-    @property
-    def contents(self):
-        return ContentAPI(self.request)
-
-    @property
-    def files(self):
-        return FileAPI(self.request)
 
     @property
     def likes(self):
@@ -724,4 +705,8 @@ class Country(object):
 
     @staticmethod
     def get_code(country):
+        if country is None:
+            return None
+        if country not in Country.COUNTRIES:
+            raise RuntimeError('Unrecognized country')
         return Country.COUNTRIES[country]
