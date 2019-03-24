@@ -347,11 +347,11 @@ class WikiAPI(Api):
                 "protected": 1 if only_admin_can_edit else 0,
                 "parent_page_id": parent_category_page_id,
                 "is_public": 1 if is_public else 0,
-                "content": content
+                "content": content,
         }
 
         if is_category:
-            data.pop('parent_category_page_id')
+            data.pop('parent_page_id')
 
         return self.request.post('/wiki/container/{}'.format(container_id), data)
 
