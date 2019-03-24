@@ -73,11 +73,9 @@ wikis.create(space_id='space-id-integer', title='Required-field', content=None, 
 # create personal wiki for certain user
 wikis.create(user_id='user-id-integer', title='Required-field', content=None, is_category=False, parent_category_page_id='Parent-Category-page-id', is_home=False, only_admin_can_edit=False, is_public=False) 
 # Update wiki page
-wiki.update(wiki_page_id='Required-wiki-page-id-integer', title='Required-field', content=None, is_category=False, parent_category_page_id=None, is_home=False, only_admin_can_edit=False, is_public=False) 
-# Move certain wiki page into another space
-wikis.move_to_space(space_id=1, wiki_page_id=1)
-# Move certain wiki page into personal wiki for user
-wikis.move_to_user_space(user_id=1)
+wikis.update(wiki_page_id='Required-wiki-page-id-integer', title='Required-field', content=None, is_category=False, parent_category_page_id=None, is_home=False, only_admin_can_edit=False, is_public=False) 
+# migrate all wikipages in space/user wiki to another space/user wiki
+wikis.migrate(from_use_id=None, from_space_id=None, to_user_id=None, to_space_id=None)
 ```
 
 ### Comments
