@@ -14,7 +14,9 @@ wikis = client.wikis
 comments = client.comments
 spaces = client.spaces
 
+
 ```
+
 
 ### User manipulation
 
@@ -24,9 +26,9 @@ users.list() # List all users
 users.list(query='username-email-or-tag') # search users by username, email or tag
 users.get(user_id=1)
 users.delete(user_id=1)
+client.countries # List all supported countries (used when creating/updating user)
 users.create(username='Required-field', email='Required-field', firstname='Required-field', lastname='Required-field', title=None, ..)
 users.update(user_id=1, email='new-email', city='new-city', ..)
-users.log_out(user_id=1)
 ```
 
 ### Post manipulation

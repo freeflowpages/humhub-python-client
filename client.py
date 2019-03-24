@@ -226,56 +226,55 @@ class SpaceAPI(Api):
         """
 
         data = {
-            "space": {
                 "name": name,
                 "description": description,
                 "tags": ','.join(tags),
                 "visibility": 0 if private else 1,  # 0 means members only, 1 means for registerd users
-            }
         }
 
         if not private:
-            data['space']['join_policy'] = 0 if join_policy_invites_only else 1
+            data['join_policy'] = 0 if join_policy_invites_only else 1
         else:
-            data['space']['join_policy'] = 0
+            data['join_policy'] = 0
         return self.request.post('/space', data)
 
     def enable(self, space_id):
-        data = {'space': {'status': 1}}
+        data = {'status': 1}
         return self.request.put('/space/{}'.format(space_id), data)
 
     def disable(self, space_id):
-        data = {'space': {'status': 0}}
+        data = {'status': 0}
         return self.request.put('/space/{}'.format(space_id), data)
 
     def archive(self, space_id):
-        data = {'space': {'status': 2}}
+        data = {'status': 2}
         return self.request.put('/space/{}'.format(space_id), data)
 
+    def unarchive(self, space_id):
+        return self.enable(space_id)
+
     def update(self, space_id, name=None, description=None, tags=None, private=None, join_policy_invites_only=None):
-        data = {
-            'space': {}
-        }
+        data = {}
 
         if name:
-            data['space']['name'] = name
-            data['space']['url'] = name
+            data['name'] = name
+            data['url'] = name
 
         if description:
-            data['space']['description'] = description
+            data['description'] = description
 
         if tags is not None:
-            data['space']['tags'] = ','.join(tags)
+            data['tags'] = ','.join(tags)
 
         if private is not None:
             if private is True:
-                data['space']['visibility'] = 0
-                data['space']['join_policy'] = 0
+                data['visibility'] = 0
+                data['join_policy'] = 0
             else:
-                data['space']['visibility'] = 1
+                data['visibility'] = 1
                 if join_policy_invites_only is not None:
 
-                    data['space']['join_policy'] = 0 if join_policy_invites_only is True else 1
+                    data['join_policy'] = 0 if join_policy_invites_only is True else 1
 
         return self.request.put('/space/{}'.format(space_id), data)
 
@@ -352,7 +351,7 @@ class WikiAPI(Api):
         }
 
         if is_category:
-            data['wikipage'].pop('parent_category_page_id')
+            data.pop('parent_category_page_id')
 
         return self.request.post('/wiki/container/{}'.format(container_id), data)
 
@@ -450,6 +449,10 @@ class HumhubClient(object):
     @property
     def wikis(self):
         return WikiAPI(self.request)
+
+    @property
+    def countries(self):
+        return Country.COUNTRIES.keys()
 
 
 class Country(object):
